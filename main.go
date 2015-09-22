@@ -3,7 +3,9 @@ package M
 import (
 	"errors"
 	"fmt"
+	"io"
 	"net"
+	"runtime"
 	"strconv"
 	"sync"
 )
@@ -24,13 +26,18 @@ var (
 	}
 )
 
+func init() {
+	runtime.GOMAXPROCS(2)
+	unitPool.mu = new(sync.Mutex)
+}
+
 type Unit struct { //basic unit for each connection
-	conn *net.TCPConn
+	conn net.Conn
 	id   int
 }
 
-func NewUnit(c *net.TCPConn) *unit {
-	a := new(Unit{conn: c})
+func NewUnit(c net.Conn) *Unit {
+	a := &Unit{conn: c}
 	unitPool.mu.Lock()
 	if len(unitPool.idlePos) < 10 {
 		a.id = len(unitPool.pool)
@@ -56,6 +63,7 @@ func (c *Unit) Read() ([]byte, error) {
 	for {
 		n, err := c.conn.Read(b)
 		result = append(result, b[:n]...)
+		break
 		if err != nil {
 			if err == io.EOF {
 				break
@@ -64,6 +72,9 @@ func (c *Unit) Read() ([]byte, error) {
 				return nil, err
 			}
 
+		}
+		if n == 0 {
+			break
 		}
 	}
 	return result, nil
@@ -100,11 +111,11 @@ func getRoomId() int {
 	return roomId
 }
 func NewRoom() *Room {
-	tmp := new(Room{id: getRoomId()})
+	tmp := &Room{id: getRoomId()}
 	room = append(room, tmp)
 	return tmp
 }
-func (r Room) AddUnit(u *Unit) {
+func (r *Room) AddUnit(u *Unit) {
 	r.players = append(r.players, u)
 }
 func (r Room) deleteUnit(u *Unit) {
@@ -126,11 +137,11 @@ func GetRoom(id int) *Room {
 	checkErr(errors.New("there no room" + strconv.Itoa(id)))
 	return nil
 }
-func (r Room) BroadcastByUnit(u *unit, v []byte) {
+func (r Room) BroadcastByUnit(u *Unit, val []byte) {
 	for _, v := range r.players {
 		if u == v {
 			continue
 		}
-		v.Write([]byte)
+		v.Write(val)
 	}
 }
