@@ -1,8 +1,10 @@
 package M
 
 import (
+	"errors"
 	"fmt"
 	"net"
+	"strconv"
 	"sync"
 )
 
@@ -15,13 +17,14 @@ const (
 )
 
 var (
-	unitPool struct {
-		pool []*Unit
-		mu   *sync.Mutex
+	unitPool struct { //manage long connections
+		pool    []*Unit //store connection
+		idlePos []int   //record position of closed connection
+		mu      *sync.Mutex
 	}
 )
 
-type Unit struct {
+type Unit struct { //basic unit for each connection
 	conn *net.TCPConn
 	id   int
 }
@@ -29,18 +32,21 @@ type Unit struct {
 func NewUnit(c *net.TCPConn) *unit {
 	a := new(Unit{conn: c})
 	unitPool.mu.Lock()
-	unitPool = append(unitPool.pool, a)
+	if len(unitPool.idlePos) < 10 {
+		a.id = len(unitPool.pool)
+		unitPool.pool = append(unitPool.pool, a)
+	} else {
+		a.id = unitPool.idlePos[0]
+		unitPool.pool[a.id] = a
+		unitPool.idlePos = unitPool.idlePos[1:]
+	}
 	unitPool.mu.Unlock()
-	a.id = len(unitPool) - 1
 	return a
 }
 func (c *Unit) Close() {
-	var head []*Unit
-	var tail []*Unit
 	unitPool.mu.Lock()
-	head = unitPool.pool[:c.id]
-	tail = unitPool.pool[c.id+1:]
-	unitPool = append(head, tail...)
+	unitPool.idlePos = append(unitPool.idlePos, c.id)
+	unitPool.pool[c.id] = nil
 	unitPool.mu.Unlock()
 	c.conn.Close()
 }
@@ -62,6 +68,10 @@ func (c *Unit) Read() ([]byte, error) {
 	}
 	return result, nil
 }
+func (c *Unit) Write(v []byte) {
+	_, e := c.conn.Write(v)
+	checkErr(e)
+}
 func checkErr(err error) bool {
 	if err == nil {
 		return false
@@ -69,6 +79,58 @@ func checkErr(err error) bool {
 	return true
 }
 
+var (
+	roomId   int     //for a room to get a id number
+	room     []*Room //store all Room
+	idleRoom []int   //record closed Room
+)
+
 type Room struct {
 	players []*Unit
+	id      int
+}
+
+func getRoomId() int {
+	if len(idleRoom) > 2 {
+		a := idleRoom[0]
+		idleRoom = idleRoom[1:]
+		return a
+	}
+	roomId++
+	return roomId
+}
+func NewRoom() *Room {
+	tmp := new(Room{id: getRoomId()})
+	room = append(room, tmp)
+	return tmp
+}
+func (r Room) AddUnit(u *Unit) {
+	r.players = append(r.players, u)
+}
+func (r Room) deleteUnit(u *Unit) {
+	var tmp []*Unit
+	for _, v := range r.players {
+		if u == v {
+			continue
+		}
+		tmp = append(tmp, v)
+	}
+	r.players = tmp
+}
+func GetRoom(id int) *Room {
+	for _, v := range room {
+		if id == v.id {
+			return v
+		}
+	}
+	checkErr(errors.New("there no room" + strconv.Itoa(id)))
+	return nil
+}
+func (r Room) BroadcastByUnit(u *unit, v []byte) {
+	for _, v := range r.players {
+		if u == v {
+			continue
+		}
+		v.Write([]byte)
+	}
 }
