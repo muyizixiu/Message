@@ -63,12 +63,12 @@ func (c *Unit) Read() ([]byte, error) {
 	for {
 		n, err := c.conn.Read(b)
 		result = append(result, b[:n]...)
-		break
 		if err != nil {
 			if err == io.EOF {
 				break
 			}
 			if checkErr(err) {
+				c.Close()
 				return nil, err
 			}
 
@@ -76,6 +76,7 @@ func (c *Unit) Read() ([]byte, error) {
 		if n == 0 {
 			break
 		}
+		break
 	}
 	return result, nil
 }
