@@ -2,7 +2,6 @@ package M
 
 import (
 	"errors"
-	"fmt"
 )
 
 func decode(b []byte) ([]byte, error) {
@@ -24,8 +23,6 @@ func decode(b []byte) ([]byte, error) {
 	for i, v := range body {
 		re = append(re, (mask_key[i%4] ^ v))
 	}
-	fmt.Println(length)
-	fmt.Println(string(re))
 	return re, nil
 }
 func encode(body []byte) ([]byte, error) {
