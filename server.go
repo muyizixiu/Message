@@ -35,6 +35,7 @@ func serve() {
 var r_test = NewRoom()
 
 func handle(c net.Conn) {
+	h.HandshakeOfWS(c)
 	u := NewUnit(c)
 	r_test.AddUnit(u)
 	for {
