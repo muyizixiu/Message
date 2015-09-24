@@ -1,7 +1,6 @@
 package M
 
 import (
-	"fmt"
 	"handshake/h"
 	"net"
 	"os"
@@ -20,7 +19,6 @@ func init() {
 	var err error
 	listener, err = net.Listen(proto, addr)
 	if checkErr(err) {
-		fmt.Println("fail  to listen")
 		os.Exit(1)
 	}
 }
@@ -37,14 +35,15 @@ func serve() {
 var r_test = NewRoom()
 
 func handle(c net.Conn) {
-	fmt.Println(h.HandshakeOfWS(c))
 	u := NewUnit(c)
 	r_test.AddUnit(u)
 	for {
 		a, _ := u.Read()
+		b, _ := decode(a)
+		d, _ := encode(b)
 		if a == nil {
 			continue
 		}
-		r_test.BroadcastByUnit(u, a)
+		r_test.BroadcastByUnit(u, d)
 	}
 }
