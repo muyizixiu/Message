@@ -1,6 +1,7 @@
 package M
 
 import (
+	"fmt"
 	"handshake/h"
 	"net"
 	"os"
@@ -35,6 +36,8 @@ func serve() {
 var r_test = NewRoom()
 
 func handle(c net.Conn) {
+	h.HandshakeOfWS(c)
+	fmt.Println(c)
 	u := NewUnit(c)
 	r_test.AddUnit(u)
 	for {
