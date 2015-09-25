@@ -3,7 +3,6 @@ package M
 import (
 	"errors"
 	"fmt"
-	"io"
 	"net"
 	"runtime"
 	"strconv"
@@ -25,6 +24,17 @@ var (
 		mu      *sync.Mutex
 	}
 )
+
+func CountConnNumber() int {
+	var i int
+	fmt.Println(unitPool.pool)
+	for _, v := range unitPool.pool {
+		if v != nil {
+			i++
+		}
+	}
+	return i
+}
 
 func init() {
 	runtime.GOMAXPROCS(2)
@@ -62,27 +72,26 @@ func (c *Unit) Read() ([]byte, error) {
 	var result []byte
 	for {
 		n, err := c.conn.Read(b)
+		fmt.Println(err)
 		result = append(result, b[:n]...)
-		if err != nil {
-			if err == io.EOF {
-				break
-			}
-			if checkErr(err) {
-				c.Close()
-				return nil, err
-			}
-
+		if checkErr(err) {
+			c.Close()
+			return nil, err
 		}
-		if n == 0 {
+
+		if n < 1024 {
 			break
 		}
-		break
 	}
 	return result, nil
 }
-func (c *Unit) Write(v []byte) {
+func (c *Unit) Write(v []byte) error {
 	_, e := c.conn.Write(v)
-	checkErr(e)
+	if checkErr(e) {
+		c.Close()
+		return e
+	}
+	return nil
 }
 func checkErr(err error) bool {
 	if err == nil {
@@ -139,10 +148,25 @@ func GetRoom(id int) *Room {
 	return nil
 }
 func (r Room) BroadcastByUnit(u *Unit, val []byte) {
-	for _, v := range r.players {
+	for i, v := range r.players {
+		if v == nil {
+			continue
+		}
 		if u == v {
 			continue
 		}
-		v.Write(val)
+		err := v.Write(val)
+		if err != nil {
+			r.players[i] = nil
+		}
 	}
+}
+func (r Room) CountNumber() int {
+	var i int
+	for _, v := range r.players {
+		if v != nil {
+			i++
+		}
+	}
+	return i
 }

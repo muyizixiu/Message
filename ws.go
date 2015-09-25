@@ -7,12 +7,19 @@ import (
 func decode(b []byte) ([]byte, error) {
 	length := len(b)
 	if length < 6 || length > 1023 {
-		return nil, nil
+		return nil, errors.New("wrong format")
+	}
+	if b[0] != 129 {
+		return nil, errors.New("not chating station")
 	}
 	var start, end int
 	if b[1] > 253 {
-		start = 8
-		end = int(b[2])*256 + int(b[3]) + start
+		if length > 126 {
+			start = 8
+			end = int(b[2])*256 + int(b[3]) + start
+		} else {
+			return nil, errors.New("wrong format")
+		}
 	} else {
 		start = 6
 		end = int(b[1]) - 122

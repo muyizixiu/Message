@@ -1,0 +1,135 @@
+<!doctype html>
+
+<html>
+
+<head>
+
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+
+    <title>golang websocket chatroom</title>
+
+    <script language="javascript"type="text/javascript">  
+    var who = "匿名"
+
+        var sock=null; 
+
+        var wsuri ="ws://172.20.154.152:8080/"; //这里的IP如果是局域测试的话，需要换成自己的
+
+        window.onload = function(){
+
+            console.log("onload");
+
+            sock = new WebSocket(wsuri);
+
+            sock.onopen=function(e){
+
+                console.log("connected to "+wsuri);
+
+            }
+
+            sock.onclose=function(e){
+
+                console.log("connection closed (" + e.code + ")");
+
+            }
+
+            sock.onmessage=function(e){
+
+                console.log("message received: " + e.data);
+
+                document.getElementById("list").innerHTML += e.data;
+
+                var div = document.getElementById("list")
+
+                div.scrollTop = div.scrollHeight; 
+
+            }
+
+        }
+        window.document.onkeydown=function(e){
+            e=window.event||e;
+            if (e.keyCode==13){
+                send()
+            }
+        }
+
+        function send () {
+
+            //document.getElementById('who').value;
+
+           /* if (who.length == 0){
+
+                document.getElementById('who').focus();
+
+                return
+
+            }*/
+
+            var msg = document.getElementById('msg').value;
+
+            if (msg.length == 0){
+
+                document.getElementById('msg').focus();
+
+                return
+
+            }
+
+            var data =  msg ;
+
+            document.getElementById('msg').value="";
+
+            who=document.getElementById('who').value==""?"匿名":document.getElementById('who').value;
+
+            var div = document.getElementById("list")
+
+            div.innerHTML +="<div class='senderT'>"+(new Date()).toLocaleTimeString()+"</div> <div class='sender'>"+who+"   :"+ data+"</div>";
+            data=" <div class='receiverT'>"+(new Date()).toLocaleTimeString()+"</div><div class='receiver'>"+who+"   :"+ data+"</div>"
+
+            div.scrollTop = div.scrollHeight; 
+
+            sock.send(data);
+
+        }        
+
+    </script>
+    <style type="text/css">
+        .sender{
+            text-align:right;padding:5px 20px 5px 20px;box-shadow:5px 5px 5px;float:right;background-color:#aaa;border-radius:10px;clear:both;margin:10px 20px;
+        }
+        .receiver{
+            text-align:left;padding:5px 20px 5px 20px;box-shadow:5px 5px 5px;float:left;background-color:#aaa;border-radius:10px;clear:both;margin:10px 20px;
+        }
+        .senderT{
+            text-align: right;float: right;clear: both;padding-right: 30px;
+        }
+        .receiverT{
+            text-align: left;float: left;clear: both;padding-left: 30px;
+        }
+	.ip{
+		font-size:10px
+	}
+    </style>
+
+</head>
+
+<body>
+
+    <div id="list" style="height: 300px;overflow-y: scroll;border: 1px solid #CCC;">
+
+    </div>
+
+    <div>
+        你的名字<input type="text" id="who" size="0" />
+
+        your message
+
+        <input type="text" id="msg" size="60" />
+
+        <button onclick="send()">send</button>
+
+    </div>
+
+</body>
+
+</html>
